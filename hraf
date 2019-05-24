@@ -1,0 +1,26 @@
+#!/usr/bin/env racket
+#lang racket
+
+; vim: ft=scheme
+
+(require markdown
+         graph
+         xml/path
+         file/glob)
+
+(define source-dir
+  (command-line
+    #:program "mdgraph"
+    #:args (source-dir)
+    source-dir))
+
+(let* ([link-graph (directed-graph '())])
+  (parameterize ([current-directory source-dir])
+    (for ([path (in-glob "**.{md,html}")])
+         (let*
+           ([html (parse-markdown path)]
+            [rpath (let-values ([(base name _) (split-path path)]) (find-relative-path base path))]
+            [name (path->string (path-replace-extension rpath #""))]
+            [links (flatten (map (lambda (x) (se-path*/list '(a #:href) x)) html))])
+           (for-each (lambda (l) (add-directed-edge! link-graph name l)) links))))
+  (display (graphviz link-graph)))
